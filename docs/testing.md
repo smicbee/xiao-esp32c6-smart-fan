@@ -62,6 +62,12 @@ The fix was validated and compiled with ESPHome 2026.7.4 / ESP-IDF 5.5.5, instal
 - measured motor rail approximately 7.912 V;
 - final Power-off test returned to hardware stage 0 at approximately 4.69 V.
 
+## Firmware 1.5.8 battery-full calibration
+
+Firmware 1.5.8 changes only the battery-percentage calibration and the matching boot-version log. The observed charger plateau of approximately 4.00 V is now the 100% endpoint; low-voltage and deep-sleep protection thresholds are unchanged.
+
+The firmware was validated and fully compiled with ESPHome 2026.7.4 / ESP-IDF 5.5.5, installed over encrypted LAN OTA and verified through Home Assistant. The live prototype reported approximately 4.015 V and an estimated level of 100%. The fan was intentionally returned to Stage 3 after verification.
+
 ## Checks still required for another build
 
 - Measure button idle/pressed levels and prove common ground before connecting GPIOs.

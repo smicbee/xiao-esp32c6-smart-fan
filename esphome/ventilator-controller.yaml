@@ -4,7 +4,7 @@ esphome:
   comment: Three-speed battery fan retrofit with physical feedback
   project:
     name: smicbee.xiao_esp32c6_smart_fan
-    version: "1.5.7"
+    version: "1.5.8"
   # On every boot (including a timer wake-up), measure before Wi-Fi starts.
   # A still-empty battery immediately returns to deep sleep; charging above
   # the recovery threshold allows a normal boot.
@@ -12,7 +12,7 @@ esphome:
     - priority: 500
       then:
         - lambda: |-
-            ESP_LOGI("fan_diag", "BOOT firmware=1.5.6");
+            ESP_LOGI("fan_diag", "BOOT firmware=1.5.8");
         - component.update: battery_voltage
         - if:
             condition:
@@ -601,8 +601,9 @@ sensor:
           then:
             - script.execute: enter_low_battery_sleep
 
-  # Voltage-based estimate for a single 4.2 V Li-ion/LiPo cell. The fan motor
-  # causes voltage sag, so this is intentionally labelled as an estimate.
+  # Voltage-based estimate for the observed charger topology, which reaches
+  # about 4.00 V at full charge. The fan motor causes voltage sag, so this is
+  # intentionally labelled as an estimate.
   - platform: template
     name: "Akkustand geschätzt"
     id: battery_level_estimated
@@ -620,11 +621,11 @@ sensor:
       // from the measured stage-3 shutdown/brownout voltage.
       static const float volts[] = {
         2.95f, 3.60f, 3.70f, 3.75f, 3.80f, 3.85f,
-        3.90f, 3.95f, 4.00f, 4.05f, 4.10f, 4.15f, 4.20f
+        3.90f, 3.95f, 4.00f
       };
       static const float levels[] = {
         0.0f, 5.0f, 15.0f, 25.0f, 40.0f, 55.0f,
-        65.0f, 75.0f, 80.0f, 85.0f, 90.0f, 95.0f, 100.0f
+        65.0f, 82.5f, 100.0f
       };
 
       if (voltage <= volts[0]) return 0.0f;

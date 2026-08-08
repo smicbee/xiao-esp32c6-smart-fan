@@ -22,6 +22,18 @@ Initial cluster midpoints used by the immediate command path:
 
 The slow telemetry classifier uses state-dependent Schmitt thresholds. In particular, it enters Stage 1 from Off at 4.84 V and returns to Off below 4.77 V.
 
+## Prototype battery estimate
+
+The documented charger repeatedly leveled off at approximately **4.00 V** rather than 4.20 V. Firmware 1.5.8 therefore treats 4.00 V and above as 100% for this prototype. The upper calibration points are:
+
+| Battery voltage | Estimated level |
+|---:|---:|
+| 3.90 V | 65% |
+| 3.95 V | 82.5% |
+| 4.00 V or above | 100% |
+
+The low-voltage/deep-sleep thresholds are unchanged. This remains a voltage-derived estimate affected by motor load, charging, temperature, cell chemistry and ADC calibration; the raw battery-voltage sensor remains authoritative evidence.
+
 ## Failure policy
 
 If values enter an ambiguous gap, drift toward a threshold, or supported operating modes overlap, keep the state unknown/telemetry-only. Never emit a blind toggle sequence from an unknown stage.
