@@ -4,6 +4,8 @@
 
 ![Electrical schematic](diagrams/circuit-schematic.svg)
 
+The SVG is reproducibly generated from [`generate_circuit_schematic.py`](diagrams/generate_circuit_schematic.py) with the pinned dependency in [`requirements-diagrams.txt`](../requirements-diagrams.txt).
+
 This schematic separates the original fan electronics from the retrofit. The XIAO emulates the existing buttons and measures the motor and battery rails through voltage dividers; it does **not** drive the motor directly. The documented prototype powers/programs the XIAO through USB and has no fan-battery power feed into XIAO 3V3 or 5V.
 
 ## Simplified wiring overview
