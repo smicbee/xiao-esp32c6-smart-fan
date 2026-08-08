@@ -1,2 +1,2 @@
-esphome==2026.6.5
+esphome==2026.7.4
 pyserial>=3.5,<4

@@ -7,7 +7,7 @@ on:
 jobs:
   validate-and-compile:
     runs-on: ubuntu-latest
-    container: ghcr.io/esphome/esphome:2026.6.5
+    container: ghcr.io/esphome/esphome:2026.7.4
     steps:
       - uses: actions/checkout@v4
       - name: Prepare non-secret CI configuration

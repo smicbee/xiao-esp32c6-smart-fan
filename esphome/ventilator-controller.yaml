@@ -4,13 +4,15 @@ esphome:
   comment: Three-speed battery fan retrofit with physical feedback
   project:
     name: smicbee.xiao_esp32c6_smart_fan
-    version: "1.5.5"
+    version: "1.5.6"
   # On every boot (including a timer wake-up), measure before Wi-Fi starts.
   # A still-empty battery immediately returns to deep sleep; charging above
   # the recovery threshold allows a normal boot.
   on_boot:
     - priority: 500
       then:
+        - lambda: |-
+            ESP_LOGI("fan_diag", "BOOT firmware=1.5.6");
         - component.update: battery_voltage
         - if:
             condition:
@@ -25,6 +27,10 @@ esp32:
     type: esp-idf
 
 logger:
+  level: DEBUG
+
+debug:
+  update_interval: 60s
 
 api:
   encryption:
@@ -161,6 +167,11 @@ script:
           value: "true"
       - lambda: |-
           const uint8_t stage = id(hardware_fan_stage_value);
+          ESP_LOGI("fan_worker",
+                   "SYNC_BEGIN stage=%u request_gen=%lu handled_gen=%lu",
+                   stage,
+                   static_cast<unsigned long>(id(request_generation)),
+                   static_cast<unsigned long>(id(handled_generation)));
           id(fan_physical_on) = stage > 0;
           id(control_stage_estimate) = stage;
           auto call = id(ventilator).make_call();
@@ -171,10 +182,18 @@ script:
       - globals.set:
           id: hardware_sync_active
           value: "false"
+      - lambda: |-
+          ESP_LOGI("fan_worker", "SYNC_END stage=%u",
+                   id(hardware_fan_stage_value));
 
   - id: enter_low_battery_sleep
     mode: single
     then:
+      - lambda: |-
+          ESP_LOGW("fan_diag",
+                   "LOW_BATTERY_SLEEP voltage=%.3f samples=%u worker_running=%d",
+                   id(battery_voltage_fast), id(low_voltage_samples),
+                   id(apply_fan_state).is_running());
       # The original fan controller has stopped the motor around this region.
       # Reconcile software state without driving either toggle-button GPIO.
       - script.stop: apply_fan_state
@@ -193,6 +212,11 @@ script:
     then:
       - lambda: |-
           id(processing_generation) = id(request_generation);
+          ESP_LOGI("fan_worker",
+                   "WORKER_BEGIN gen=%lu requested_on=%d requested_stage=%u sync=%d",
+                   static_cast<unsigned long>(id(processing_generation)),
+                   id(requested_fan_on), id(requested_fan_stage),
+                   id(hardware_sync_active));
       # Make a fresh, independent ADC measurement for this controller pass.
       - component.update: motor_voltage
       - delay: 50ms
@@ -209,6 +233,10 @@ script:
           } else {
             id(control_stage_estimate) = 3;
           }
+          ESP_LOGI("fan_worker",
+                   "FRESH_ADC voltage=%.3f classified_stage=%u target_on=%d target_stage=%u",
+                   x, id(control_stage_estimate), id(requested_fan_on),
+                   id(requested_fan_stage));
       - if:
           condition:
             lambda: return !id(hardware_sync_active);
@@ -227,9 +255,17 @@ script:
                             condition:
                               lambda: return id(control_stage_estimate) == 0;
                             then:
+                              - lambda: |-
+                                  ESP_LOGI("fan_worker",
+                                           "PULSE_POWER reason=start gen=%lu",
+                                           static_cast<unsigned long>(id(processing_generation)));
                               - output.turn_on: fan_power_pulse
                               - delay: 50ms
                               - output.turn_off: fan_power_pulse
+                              - lambda: |-
+                                  ESP_LOGI("fan_worker",
+                                           "PULSE_POWER_END reason=start gen=%lu",
+                                           static_cast<unsigned long>(id(processing_generation)));
                               - globals.set:
                                   id: fan_physical_on
                                   value: "true"
@@ -247,9 +283,20 @@ script:
                               if (current == 0) return target - 1;
                               return (target + 3 - current) % 3;
                             then:
+                              - lambda: |-
+                                  ESP_LOGI("fan_worker",
+                                           "PULSE_SPEED current=%u target=%u gen=%lu",
+                                           id(control_stage_estimate),
+                                           id(requested_fan_stage),
+                                           static_cast<unsigned long>(id(processing_generation)));
                               - output.turn_on: fan_speed_pulse
                               - delay: 50ms
                               - output.turn_off: fan_speed_pulse
+                              - lambda: |-
+                                  ESP_LOGI("fan_worker",
+                                           "PULSE_SPEED_END stage=%u gen=%lu",
+                                           id(control_stage_estimate),
+                                           static_cast<unsigned long>(id(processing_generation)));
                               - lambda: |-
                                   id(control_stage_estimate) =
                                     (id(control_stage_estimate) % 3) + 1;
@@ -262,9 +309,18 @@ script:
                             condition:
                               lambda: return id(control_stage_estimate) > 0;
                             then:
+                              - lambda: |-
+                                  ESP_LOGI("fan_worker",
+                                           "PULSE_POWER reason=stop stage=%u gen=%lu",
+                                           id(control_stage_estimate),
+                                           static_cast<unsigned long>(id(processing_generation)));
                               - output.turn_on: fan_power_pulse
                               - delay: 50ms
                               - output.turn_off: fan_power_pulse
+                              - lambda: |-
+                                  ESP_LOGI("fan_worker",
+                                           "PULSE_POWER_END reason=stop gen=%lu",
+                                           static_cast<unsigned long>(id(processing_generation)));
                               - globals.set:
                                   id: fan_physical_on
                                   value: "false"
@@ -282,6 +338,11 @@ script:
                 // Mark only the generation captured at the beginning. A newer
                 // request that arrived during this pass remains pending.
                 id(handled_generation) = id(processing_generation);
+                ESP_LOGI("fan_worker",
+                         "WORKER_END handled_gen=%lu latest_gen=%lu estimate=%u",
+                         static_cast<unsigned long>(id(handled_generation)),
+                         static_cast<unsigned long>(id(request_generation)),
+                         id(control_stage_estimate));
 
 fan:
   - platform: template
@@ -304,6 +365,10 @@ fan:
                   speed >= 1 && speed <= 3 ? speed : 1;
                 id(control_feedback_hold_until) = millis() + 10000U;
                 id(request_generation)++;
+                ESP_LOGI("fan_worker",
+                         "REQUEST source=state on=%d stage=%u gen=%lu",
+                         id(requested_fan_on), id(requested_fan_stage),
+                         static_cast<unsigned long>(id(request_generation)));
     on_speed_set:
       - if:
           condition:
@@ -318,6 +383,10 @@ fan:
                   speed >= 1 && speed <= 3 ? speed : 1;
                 id(control_feedback_hold_until) = millis() + 10000U;
                 id(request_generation)++;
+                ESP_LOGI("fan_worker",
+                         "REQUEST source=speed on=%d stage=%u gen=%lu",
+                         id(requested_fan_on), id(requested_fan_stage),
+                         static_cast<unsigned long>(id(request_generation)));
 
 interval:
   - interval: 250ms
@@ -347,6 +416,18 @@ binary_sensor:
     icon: mdi:fan
 
 sensor:
+  - platform: debug
+    free:
+      name: "Heap frei"
+    min_free:
+      name: "Heap Minimum frei"
+    block:
+      name: "Heap größter Block"
+    fragmentation:
+      name: "Heap Fragmentierung"
+    loop_time:
+      name: "Maximale Loop-Zeit"
+
   # Motor feedback: Motor red -- 150k -- D1/GPIO1 -- 22k -- GND.
   # The divider factor is (150k + 22k) / 22k = 7.81818.
   - platform: adc
@@ -431,6 +512,9 @@ sensor:
           id(control_stage_estimate) = stage;
           if (stage == id(hardware_fan_stage_value))
             return;
+          ESP_LOGI("fan_worker",
+                   "FEEDBACK_CHANGE voltage=%.3f old_stage=%u new_stage=%u",
+                   x, id(hardware_fan_stage_value), stage);
           id(hardware_fan_stage_value) = stage;
           id(sync_fan_from_hardware).execute();
 
@@ -472,7 +556,13 @@ sensor:
           id(battery_voltage_fast) = voltage;
           if (voltage < 3.05f) {
             if (id(low_voltage_samples) < 3) id(low_voltage_samples)++;
+            ESP_LOGW("fan_diag", "LOW_BATTERY_SAMPLE voltage=%.3f count=%u",
+                     voltage, id(low_voltage_samples));
           } else if (voltage > 3.10f) {
+            if (id(low_voltage_samples) > 0) {
+              ESP_LOGI("fan_diag", "LOW_BATTERY_RECOVERED voltage=%.3f old_count=%u",
+                       voltage, id(low_voltage_samples));
+            }
             id(low_voltage_samples) = 0;
           }
       - if:
@@ -543,6 +633,10 @@ sensor:
     entity_category: diagnostic
 
 text_sensor:
+  - platform: debug
+    reset_reason:
+      name: "Reset-Grund"
+
   - platform: wifi_info
     ip_address:
       name: "IP-Adresse"

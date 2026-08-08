@@ -1,6 +1,6 @@
 # XIAO ESP32C6 Smart Fan
 
-[![ESPHome](https://img.shields.io/badge/ESPHome-2026.6.5-000000?logo=esphome)](https://esphome.io/)
+[![ESPHome](https://img.shields.io/badge/ESPHome-2026.7.4-000000?logo=esphome)](https://esphome.io/)
 [![Board](https://img.shields.io/badge/board-Seeed_XIAO_ESP32C6-00b96b)](https://wiki.seeedstudio.com/xiao_esp32c6_getting_started/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
@@ -33,6 +33,7 @@ The controller emulates the original active-low Power and Speed buttons, measure
 - Battery voltage and voltage-based state-of-charge estimate.
 - Low-voltage protection: three readings below 3.05 V, deep sleep, 60 s wake checks, normal boot above 3.35 V.
 - BMP280 temperature and pressure telemetry over SPI.
+- Structured request/worker/ADC/GPIO/feedback logs plus reset reason, heap and maximum-loop-time diagnostics.
 
 ## Hardware
 
@@ -118,9 +119,9 @@ cp esphome/secrets.example.yaml esphome/secrets.yaml
 ### 3. Validate and commission over USB
 
 ```bash
-python -m venv .venv
+python3.12 -m venv .venv
 . .venv/bin/activate
-pip install "esphome==2026.6.5"
+pip install "esphome==2026.7.4"
 esphome config esphome/ventilator-controller.yaml
 esphome run esphome/ventilator-controller.yaml
 ```
@@ -145,6 +146,7 @@ Real hardware tests included:
 - feedback reconciliation from the original hardware button;
 - USB charging while distinguishing Off from Stage 1;
 - encrypted Native API and OTA reconnect;
+- firmware 1.5.6 diagnostic logging on real `Off → Stage 1 → Off` transitions;
 - safe final state after tests.
 
 The exact evidence boundary—including which firmware was exercised on hardware and which checks remain open—is documented in [docs/testing.md](docs/testing.md).

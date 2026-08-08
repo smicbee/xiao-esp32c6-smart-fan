@@ -4,7 +4,7 @@ This document separates real prototype evidence from configuration/build-only ch
 
 ## Real hardware evidence
 
-The prototype was exercised with firmware 1.5.4 on a Seeed Studio XIAO ESP32C6 connected to the documented fan electronics.
+The prototype was exercised with firmware 1.5.4 and later 1.5.6 on a Seeed Studio XIAO ESP32C6 connected to the documented fan electronics.
 
 | Test | Observed result |
 |---|---|
@@ -20,7 +20,7 @@ The prototype was exercised with firmware 1.5.4 on a Seeed Studio XIAO ESP32C6 c
 
 Measured running clusters were approximately 4.94–4.98 V, 6.51–6.54 V and 7.91–7.96 V for Stages 1–3.
 
-## Firmware 1.5.5 verification
+## Firmware 1.5.5 verification history
 
 Firmware 1.5.5 adds a feedback guard to the low-battery sleep path and removes a prototype-only migration. The public configuration was:
 
@@ -29,6 +29,23 @@ Firmware 1.5.5 adds a feedback guard to the low-battery sleep path and removes a
 - fully validated and compiled again in GitHub Actions.
 
 At initial publication, 1.5.5 had **not** yet been installed and exercised on the physical prototype. The real command-burst evidence above therefore belongs to 1.5.4; the relevant worker logic is otherwise unchanged.
+
+## Firmware 1.5.6 diagnostic verification
+
+Firmware 1.5.6 was validated and fully compiled locally with ESPHome 2026.7.4 / ESP-IDF 5.5.5, then installed over encrypted LAN OTA on the real prototype. The live device reported configuration hash `0xccb9c359`.
+
+The diagnostic release adds structured event logs for:
+
+- incoming state/speed requests and request generations;
+- worker start/end and freshly classified motor voltage;
+- start and end of every 50 ms Power/Speed pulse;
+- stable physical-feedback changes and UI synchronization;
+- low-battery samples, recovery and deep-sleep entry;
+- boot/reset reason, heap metrics and maximum main-loop time.
+
+A persistent encrypted Native API collector captured a real `Off → Stage 1 → Off` test. Both directions logged request, fresh ADC classification, pulse start/end, worker completion and delayed hardware-feedback confirmation. Physical evidence was Stage 1 at approximately 4.95 V and final Off at approximately 4.66 V. The controller remained Off after the test.
+
+The built-in ESP-IDF task watchdog remains enabled with its ESPHome default timeout. The external stale-telemetry automation documented in [home-assistant.md](home-assistant.md) is still useful because a scheduler/component stall can leave network tasks alive without necessarily starving the outer watched task.
 
 ## Checks still required for another build
 
