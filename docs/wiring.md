@@ -1,5 +1,13 @@
 # Wiring
 
+## Electrical schematic
+
+![Electrical schematic](diagrams/circuit-schematic.svg)
+
+This schematic separates the original fan electronics from the retrofit. The XIAO emulates the existing buttons and measures the motor and battery rails through voltage dividers; it does **not** drive the motor directly. The documented prototype powers/programs the XIAO through USB and has no fan-battery power feed into XIAO 3V3 or 5V.
+
+## Simplified wiring overview
+
 ![Complete wiring diagram](diagrams/wiring.svg)
 
 ## Button emulation

@@ -1,0 +1,144 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1240" viewBox="0 0 1800 1240" role="img" aria-labelledby="title desc">
+  <title id="title">XIAO ESP32C6 smart fan electrical schematic</title>
+  <desc id="desc">Electrical overview of the verified prototype: open-drain Power and Speed button emulation, motor and battery voltage dividers, shared ground, USB-powered XIAO and BMP280 SPI wiring.</desc>
+  <defs>
+    <style>
+      .bg{fill:#f7fafc}.frame{fill:#fff;stroke:#243746;stroke-width:3}.fanbox{fill:#f1fbf6;stroke:#16835b;stroke-width:3}.sensorbox{fill:#fff8ed;stroke:#bd6900;stroke-width:3}.subbox{fill:#fff;stroke:#92a5b2;stroke-width:2;stroke-dasharray:8 7}.title{font:700 30px Arial,sans-serif;fill:#13242f}.head{font:700 23px Arial,sans-serif;fill:#13242f}.label{font:19px Arial,sans-serif;fill:#1b2f3b}.small{font:16px Arial,sans-serif;fill:#425b69}.tiny{font:14px Arial,sans-serif;fill:#526b78}.pin{font:700 17px Arial,sans-serif;fill:#0d5970}.net{fill:none;stroke:#176c91;stroke-width:4;stroke-linecap:round;stroke-linejoin:round}.sense{fill:none;stroke:#c77a00;stroke-width:4;stroke-linecap:round;stroke-linejoin:round}.power{fill:none;stroke:#c63838;stroke-width:4;stroke-linecap:round;stroke-linejoin:round}.ground{fill:none;stroke:#344955;stroke-width:5;stroke-linecap:round;stroke-linejoin:round}.spi{fill:none;stroke:#6e42a3;stroke-width:4;stroke-linecap:round}.boundary{fill:none;stroke:#d26723;stroke-width:3;stroke-dasharray:10 8}.node{fill:#13242f}.senseNode{fill:#c77a00}.gndfill{fill:#344955}.note{fill:#fff5d6;stroke:#d99b00;stroke-width:2}.danger{fill:#fff0f0;stroke:#cf4848;stroke-width:2}.white{fill:#fff}.r{fill:none;stroke:#c77a00;stroke-width:4;stroke-linejoin:round}.btn{fill:#fff;stroke:#16835b;stroke-width:2}.muted{fill:#6a7e89}
+    </style>
+    <marker id="arrowRed" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="#c63838"/></marker>
+    <marker id="arrowPurple" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="#6e42a3"/></marker>
+  </defs>
+
+  <rect width="1800" height="1240" class="bg"/>
+  <text x="60" y="54" class="title">XIAO ESP32C6 smart fan — electrical schematic</text>
+  <text x="60" y="84" class="small">Verified prototype topology · original charger, protection, motor driver and push buttons remain in place</text>
+
+  <!-- XIAO -->
+  <rect x="70" y="145" width="500" height="900" rx="22" class="frame"/>
+  <text x="105" y="192" class="head">Seeed Studio XIAO ESP32C6</text>
+  <rect x="105" y="222" width="250" height="76" rx="10" class="subbox"/>
+  <text x="125" y="253" class="label">USB-C</text>
+  <text x="125" y="278" class="small">power + programming</text>
+  <path d="M28 260H105" class="power" marker-end="url(#arrowRed)"/>
+  <text x="24" y="235" class="small">5 V USB</text>
+
+  <text x="390" y="347" class="pin">D6 / GPIO16</text>
+  <circle cx="570" cy="340" r="7" class="node"/>
+  <text x="390" y="407" class="pin">D5 / GPIO23</text>
+  <circle cx="570" cy="400" r="7" class="node"/>
+
+  <text x="402" y="527" class="pin">D1 / GPIO1</text>
+  <circle cx="570" cy="520" r="7" class="senseNode"/>
+  <text x="402" y="657" class="pin">D0 / GPIO0</text>
+  <circle cx="570" cy="650" r="7" class="senseNode"/>
+
+  <text x="410" y="787" class="pin">D7 / GPIO17</text>
+  <text x="410" y="827" class="pin">D8 / GPIO19</text>
+  <text x="410" y="867" class="pin">D9 / GPIO20</text>
+  <text x="398" y="907" class="pin">D10 / GPIO18</text>
+  <text x="468" y="967" class="pin">3V3</text>
+  <text x="474" y="1012" class="pin">GND</text>
+  <circle cx="570" cy="780" r="6" fill="#6e42a3"/><circle cx="570" cy="820" r="6" fill="#6e42a3"/><circle cx="570" cy="860" r="6" fill="#6e42a3"/><circle cx="570" cy="900" r="6" fill="#6e42a3"/><circle cx="570" cy="960" r="6" fill="#c63838"/><circle cx="570" cy="1005" r="6" class="node"/>
+
+  <!-- Fan PCB -->
+  <rect x="1390" y="125" width="350" height="840" rx="22" class="fanbox"/>
+  <text x="1430" y="172" class="head">Original fan electronics</text>
+  <rect x="1420" y="205" width="290" height="102" rx="12" class="subbox"/>
+  <text x="1450" y="238" class="label">1-cell Li-ion battery</text>
+  <text x="1450" y="265" class="small">charger + protection</text>
+  <path d="M1450 280H1680" class="power"/>
+  <text x="1460" y="299" class="tiny">BAT+ / BAT− stay on original PCB</text>
+
+  <rect x="1420" y="325" width="290" height="120" rx="12" class="subbox"/>
+  <text x="1450" y="357" class="label">Original controls</text>
+  <rect x="1450" y="373" width="100" height="38" rx="8" class="btn"/><text x="1468" y="399" class="small">POWER</text>
+  <rect x="1580" y="373" width="100" height="38" rx="8" class="btn"/><text x="1597" y="399" class="small">SPEED</text>
+
+  <rect x="1420" y="475" width="290" height="126" rx="12" class="subbox"/>
+  <text x="1450" y="510" class="label">Motor driver</text>
+  <text x="1450" y="541" class="small">3 cyclic speed stages</text>
+  <path d="M1450 565H1670" class="sense"/>
+  <text x="1460" y="588" class="tiny">Motor rail is measured passively</text>
+
+  <text x="1405" y="347" class="pin">POWER SIG</text>
+  <circle cx="1390" cy="340" r="7" class="node"/>
+  <text x="1405" y="407" class="pin">SPEED SIG</text>
+  <circle cx="1390" cy="400" r="7" class="node"/>
+  <text x="1405" y="527" class="pin">MOTOR+</text>
+  <circle cx="1390" cy="520" r="7" class="senseNode"/>
+  <text x="1405" y="657" class="pin">BAT+</text>
+  <circle cx="1390" cy="650" r="7" fill="#c63838"/>
+  <text x="1405" y="747" class="pin">BAT− / MOTOR− / GND</text>
+  <circle cx="1390" cy="740" r="7" class="node"/>
+
+  <!-- Button nets -->
+  <path d="M570 340H1390" class="net"/>
+  <path d="M570 400H1390" class="net"/>
+  <text x="765" y="325" class="small">50 ms LOW · open-drain · released to high impedance</text>
+  <text x="900" y="385" class="tiny">original buttons remain functional</text>
+
+  <!-- Motor divider -->
+  <path d="M1390 520H1280" class="sense"/>
+  <path d="M1280 520l-18-14-36 28-36-28-36 28-36-28-18 14" class="r"/>
+  <path d="M1100 520H570" class="sense"/>
+  <text x="1174" y="490" class="label">R1 150 kΩ</text>
+  <circle cx="880" cy="520" r="8" class="senseNode"/>
+  <path d="M880 520H1010V550" class="sense"/>
+  <path d="M1010 550l-14 14 28 22-28 22 28 22-14 14" class="r"/>
+  <!-- Explicit line jump at BAT+ divider: R2 is not connected to the battery ADC net. -->
+  <path d="M1010 644V637C1034 637 1034 663 1010 663V740" class="sense"/>
+  <text x="1038" y="586" class="label">R2</text><text x="1038" y="612" class="small">22 kΩ</text>
+  <text x="605" y="495" class="small">ADC motor feedback · factor ≈ 7.818</text>
+
+  <!-- Battery divider -->
+  <path d="M1390 650H1280" class="power"/>
+  <path d="M1280 650l-18-14-36 28-36-28-36 28-36-28-18 14" class="r"/>
+  <path d="M1100 650H570" class="sense"/>
+  <text x="1174" y="620" class="label">R3 220 kΩ</text>
+  <circle cx="760" cy="650" r="8" class="senseNode"/>
+  <path d="M760 650V670" class="sense"/>
+  <path d="M760 670l-13 10 26 13-26 13 26 13-13 10" class="r"/>
+  <path d="M760 729V740" class="sense"/>
+  <text x="790" y="690" class="label">R4</text><text x="790" y="716" class="small">220 kΩ</text>
+  <text x="605" y="625" class="small">ADC battery monitor · factor = 2.0</text>
+
+  <!-- Shared ground rail -->
+  <path d="M570 740H1390" class="ground"/>
+  <circle cx="760" cy="740" r="8" class="gndfill"/><circle cx="880" cy="740" r="8" class="gndfill"/>
+  <text x="1010" y="770" class="small">verified common ground</text>
+  <path d="M570 1005H635V740" class="ground"/>
+
+  <!-- BMP280 -->
+  <rect x="700" y="825" width="540" height="340" rx="20" class="sensorbox"/>
+  <text x="740" y="870" class="head">BMP280 breakout · SPI mode · 3.3 V</text>
+  <text x="735" y="917" class="pin">SDO / MISO</text>
+  <text x="735" y="967" class="pin">CSB</text>
+  <text x="735" y="1017" class="pin">SCL / SCK</text>
+  <text x="735" y="1067" class="pin">SDA / MOSI</text>
+  <text x="735" y="1122" class="pin">VCC</text>
+  <text x="1050" y="1122" class="pin">GND</text>
+  <circle cx="700" cy="910" r="6" fill="#6e42a3"/><circle cx="700" cy="960" r="6" fill="#6e42a3"/><circle cx="700" cy="1010" r="6" fill="#6e42a3"/><circle cx="700" cy="1060" r="6" fill="#6e42a3"/><circle cx="700" cy="1115" r="6" fill="#c63838"/><circle cx="1240" cy="1115" r="6" class="node"/>
+
+  <path d="M570 780H605V910H700" class="spi" marker-end="url(#arrowPurple)"/>
+  <path d="M570 820H625V960H700" class="spi" marker-end="url(#arrowPurple)"/>
+  <path d="M570 860H645V1010H700" class="spi" marker-end="url(#arrowPurple)"/>
+  <path d="M570 900H665V1060H700" class="spi" marker-end="url(#arrowPurple)"/>
+  <path d="M570 960H590V1115H700" class="power"/>
+  <path d="M1240 1115H1260V740H1390" class="ground"/>
+
+  <!-- Boundaries and notes -->
+  <rect x="650" y="104" width="680" height="50" rx="12" class="note"/>
+  <text x="690" y="136" class="small">Signal/measurement connection only — no fan-battery power feed to XIAO</text>
+
+  <rect x="1285" y="1000" width="455" height="145" rx="14" class="note"/>
+  <text x="1310" y="1034" class="label">Prototype notes</text>
+  <text x="1310" y="1064" class="small">• No 100 nF capacitor fitted at GPIO1.</text>
+  <text x="1310" y="1091" class="small">• XIAO powered/programmed through USB.</text>
+  <text x="1310" y="1118" class="small">• Re-measure every different fan revision.</text>
+
+  <rect x="70" y="1080" width="520" height="95" rx="14" class="danger"/>
+  <text x="95" y="1114" class="label">Do not connect MOTOR+ or BAT+ directly to an ADC.</text>
+  <text x="95" y="1145" class="small">Verify pad voltage and common ground before GPIO connection.</text>
+
+  <text x="60" y="1210" class="tiny">Diagram scope: documented prototype wiring, not a universal fan interface or certified product schematic.</text>
+</svg>
