@@ -164,8 +164,6 @@ The exact evidence boundary—including which firmware was exercised on hardware
   <img src="docs/images/fan-internals.jpg" width="47%" alt="Opened fan base">
 </p>
 
-The repository images were exported from the owner's private photo library, cropped for technical relevance, re-encoded, and stripped of EXIF/GPS metadata before publication.
-
 ## Safety and limitations
 
 - Modifying a Li-ion-powered appliance can cause fire, electric shock, battery damage or controller failure.
@@ -187,7 +185,7 @@ esphome/                 ESPHome firmware and secrets template
 hardware/                BOM / parts list
 docs/diagrams/           public wiring and architecture drawings
 docs/                    wiring, calibration, HA setup and German documentation
-docs/images/             privacy-sanitized project photos
+docs/images/             project photographs
 tools/                   optional serial bring-up helper
 .github/workflows/       ESPHome validation/compile CI
 ```
