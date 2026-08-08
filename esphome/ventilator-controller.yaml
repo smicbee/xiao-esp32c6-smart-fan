@@ -4,7 +4,7 @@ esphome:
   comment: Three-speed battery fan retrofit with physical feedback
   project:
     name: smicbee.xiao_esp32c6_smart_fan
-    version: "1.5.6"
+    version: "1.5.7"
   # On every boot (including a timer wake-up), measure before Wi-Fi starts.
   # A still-empty battery immediately returns to deep sleep; charging above
   # the recovery threshold allows a normal boot.
@@ -151,6 +151,21 @@ globals:
     restore_value: false
     initial_value: "0"
 
+  - id: processing_requested_fan_on
+    type: bool
+    restore_value: false
+    initial_value: "false"
+
+  - id: processing_requested_fan_stage
+    type: uint8_t
+    restore_value: false
+    initial_value: "1"
+
+  - id: processing_speed_pulse_count
+    type: uint8_t
+    restore_value: false
+    initial_value: "0"
+
   - id: handled_generation
     type: uint32_t
     restore_value: false
@@ -212,10 +227,13 @@ script:
     then:
       - lambda: |-
           id(processing_generation) = id(request_generation);
+          id(processing_requested_fan_on) = id(requested_fan_on);
+          id(processing_requested_fan_stage) = id(requested_fan_stage);
           ESP_LOGI("fan_worker",
                    "WORKER_BEGIN gen=%lu requested_on=%d requested_stage=%u sync=%d",
                    static_cast<unsigned long>(id(processing_generation)),
-                   id(requested_fan_on), id(requested_fan_stage),
+                   id(processing_requested_fan_on),
+                   id(processing_requested_fan_stage),
                    id(hardware_sync_active));
       # Make a fresh, independent ADC measurement for this controller pass.
       - component.update: motor_voltage
@@ -235,8 +253,9 @@ script:
           }
           ESP_LOGI("fan_worker",
                    "FRESH_ADC voltage=%.3f classified_stage=%u target_on=%d target_stage=%u",
-                   x, id(control_stage_estimate), id(requested_fan_on),
-                   id(requested_fan_stage));
+                   x, id(control_stage_estimate),
+                   id(processing_requested_fan_on),
+                   id(processing_requested_fan_stage));
       - if:
           condition:
             lambda: return !id(hardware_sync_active);
@@ -247,7 +266,7 @@ script:
                 then:
                   - if:
                       condition:
-                        lambda: return id(requested_fan_on);
+                        lambda: return id(processing_requested_fan_on);
                       then:
                         # A stopped fan always starts in stage 1. Only this
                         # transition uses Power; later changes use Speed only.
@@ -275,19 +294,30 @@ script:
                               - delay: 700ms
                         # Speed advances cyclically 1 -> 2 -> 3 -> 1. Compute
                         # the shortest forward sequence from the known stage.
+                        # Snapshot the count before entering repeat. ESPHome
+                        # reevaluates a lambda repeat count after each pass;
+                        # deriving it from the advancing stage would stop
+                        # Off -> Stage 3 after only one Speed pulse.
+                        - lambda: |-
+                            const uint8_t current = id(control_stage_estimate);
+                            const uint8_t target = id(processing_requested_fan_stage);
+                            id(processing_speed_pulse_count) =
+                              (target >= 1 && target <= 3)
+                                ? ((target + 3 - current) % 3)
+                                : 0;
+                            ESP_LOGI("fan_worker",
+                                     "SPEED_PLAN current=%u target=%u pulses=%u gen=%lu",
+                                     current, target,
+                                     id(processing_speed_pulse_count),
+                                     static_cast<unsigned long>(id(processing_generation)));
                         - repeat:
-                            count: !lambda |-
-                              const uint8_t current = id(control_stage_estimate);
-                              const uint8_t target = id(requested_fan_stage);
-                              if (target < 1 || target > 3) return 0;
-                              if (current == 0) return target - 1;
-                              return (target + 3 - current) % 3;
+                            count: !lambda return id(processing_speed_pulse_count);
                             then:
                               - lambda: |-
                                   ESP_LOGI("fan_worker",
                                            "PULSE_SPEED current=%u target=%u gen=%lu",
                                            id(control_stage_estimate),
-                                           id(requested_fan_stage),
+                                           id(processing_requested_fan_stage),
                                            static_cast<unsigned long>(id(processing_generation)));
                               - output.turn_on: fan_speed_pulse
                               - delay: 50ms

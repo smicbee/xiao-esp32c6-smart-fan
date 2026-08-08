@@ -47,6 +47,21 @@ A persistent encrypted Native API collector captured a real `Off → Stage 1 →
 
 The built-in ESP-IDF task watchdog remains enabled with its ESPHome default timeout. The external stale-telemetry automation documented in [home-assistant.md](home-assistant.md) is still useful because a scheduler/component stall can leave network tasks alive without necessarily starving the outer watched task.
 
+## Firmware 1.5.7 Off-to-Stage-3 regression test
+
+Firmware 1.5.7 fixes a dynamic-repeat-count defect found through the 1.5.6 event logs. ESPHome reevaluates a lambda-based `repeat.count` after every pass. Because the earlier expression derived the remaining count from an estimate that advanced after each pulse, a direct `Off → Stage 3` request stopped after one Speed pulse and physically reached only Stage 2.
+
+The worker now snapshots the requested state/stage and the complete Speed-pulse count at worker start. A newer request remains pending as a later generation instead of changing the running sequence.
+
+The fix was validated and compiled with ESPHome 2026.7.4 / ESP-IDF 5.5.5, installed over encrypted LAN OTA, and tested on the physical prototype:
+
+- initial state Off / hardware stage 0 at approximately 4.66 V;
+- direct Home Assistant request to Stage 3;
+- one complete Power pulse followed by exactly two complete Speed pulses;
+- worker estimate and filtered hardware feedback both reached Stage 3;
+- measured motor rail approximately 7.912 V;
+- final Power-off test returned to hardware stage 0 at approximately 4.69 V.
+
 ## Checks still required for another build
 
 - Measure button idle/pressed levels and prove common ground before connecting GPIOs.
