@@ -22,3 +22,28 @@ A request arriving during an active pass therefore remains pending. The next pas
 - **Public/authoritative telemetry:** multiply + five-value median + hysteresis + five consecutive classifications.
 
 Hardware reconciliation is guarded so publication cannot become a command.
+
+## Low-battery state flow
+
+```text
+Battery ADC every 5 s
+        │
+        ├─ value ≥ 3.10 V → reset consecutive-low counter
+        │
+        └─ value < 3.05 V → increment counter
+                                  │
+                             three samples
+                                  │
+                  stop command worker; enable feedback guard
+                                  │
+                  publish Fan=Off without a button pulse
+                                  │
+                         enter deep sleep for 60 s
+                                  │
+                         timer wake and fresh ADC read
+                                  │
+                 < 3.35 V ───────┴─────── ≥ 3.35 V
+                 sleep again                normal boot
+```
+
+This firmware path supplements the original cell protection. It is not a charger, BMS or continuously awake undervoltage supervisor.

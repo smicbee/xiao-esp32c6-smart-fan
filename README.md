@@ -10,6 +10,8 @@ The controller emulates the original active-low Power and Speed buttons, measure
 
 > **German documentation:** [docs/README.de.md](docs/README.de.md)
 
+> **Status:** Working prototype · hardware-specific · not certified. Recalibrate and electrically verify every different fan/controller revision before enabling button outputs.
+
 <p align="center">
   <img src="docs/images/fan-front.jpg" width="520" alt="Modified rechargeable desk fan">
 </p>
@@ -145,6 +147,8 @@ Real hardware tests included:
 - encrypted Native API and OTA reconnect;
 - safe final state after tests.
 
+The exact evidence boundary—including which firmware was exercised on hardware and which checks remain open—is documented in [docs/testing.md](docs/testing.md).
+
 ## Photos
 
 <p align="center">
@@ -157,6 +161,7 @@ The repository images were exported from the owner's private photo library, crop
 ## Safety and limitations
 
 - Modifying a Li-ion-powered appliance can cause fire, electric shock, battery damage or controller failure.
+- Treat flashing, rebooting, restored state and Home Assistant commands as possible motor-start events during commissioning. Keep hands and loose objects clear and disconnect the motor while validating an unknown interface where practical.
 - The XIAO is **not** the battery charger or BMS. The original electronics remain responsible for charging and protection.
 - The photographed prototype was powered/programmed through USB during development. Do not connect the cell directly to XIAO 3V3/5V.
 - Never connect Motor+ directly to an ADC pin.
@@ -165,6 +170,7 @@ The repository images were exported from the owner's private photo library, crop
 - Voltage-derived battery percentage is an estimate affected by load, chemistry, temperature and calibration.
 - The narrow charging-Off/Stage-1 gap may not remain valid with another charger, cable, battery or fan revision.
 - The low-voltage thresholds supplement; they do not replace the cell protection circuit.
+- Keep the ESPHome API and OTA service on a trusted local network or VPN; do not expose ports 6053/3232 directly to the Internet.
 
 ## Repository layout
 
