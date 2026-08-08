@@ -1,0 +1,18 @@
+# ESPHome local state and secrets
+.esphome/
+**/.esphome/
+esphome/secrets.yaml
+secrets.yaml
+
+# Python / editors / OS
+.venv/
+__pycache__/
+*.py[cod]
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Local logs and private media review
+*.log
+.private-*/

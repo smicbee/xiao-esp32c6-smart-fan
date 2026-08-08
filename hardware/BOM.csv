@@ -1,0 +1,9 @@
+Reference,Quantity,Part,Value or model,Notes
+MCU1,1,Microcontroller,Seeed Studio XIAO ESP32C6,ESP32-C6FH4 prototype
+SENS1,1,Pressure/temperature sensor,BMP280 breakout,3.3 V SPI mode
+R1,1,Resistor,150 kOhm,Motor feedback top resistor
+R2,1,Resistor,22 kOhm,Motor feedback bottom resistor
+R3-R4,2,Resistor,220 kOhm,Battery 1:2 divider
+C1,0-1,Capacitor,100 nF,Optional D1-to-GND noise/PWM filter; not fitted in prototype
+WIRE,as needed,Insulated hookup wire,,Keep wiring strain-relieved and clear of moving parts
+FAN1,1,Rechargeable three-speed desk fan,,Original motor/controller/charger/protection retained

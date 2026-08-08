@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1120" viewBox="0 0 1600 1120">
+<defs>
+  <style>
+    .panel{fill:#0b171e;stroke:#29444f;stroke-width:2}.xiao{fill:#12202a;stroke:#52c7d9;stroke-width:3}.fan{fill:#173126;stroke:#55d69e;stroke-width:3}.sens{fill:#332315;stroke:#ffb45d;stroke-width:3}.title{fill:#f5f7f8;font:26px sans-serif;font-weight:bold}.txt{fill:#eaf0f2;font:20px sans-serif}.small{fill:#b8c8cf;font:16px sans-serif}.sig{stroke:#63c7ff;stroke-width:5;fill:none}.gnd{stroke:#a9b6bd;stroke-width:5;fill:none}.pwr{stroke:#ff6464;stroke-width:5;fill:none}.sense{stroke:#ffd166;stroke-width:5;fill:none}.node{fill:#ffd166}.r{fill:#332315;stroke:#ffb45d;stroke-width:3}
+  </style>
+</defs>
+<rect width="1600" height="1120" rx="24" fill="#071015"/>
+<text x="50" y="55" class="title">XIAO ESP32C6 smart fan — verified prototype wiring</text>
+
+<!-- Button emulation panel -->
+<rect x="45" y="85" width="1510" height="265" rx="20" class="panel"/>
+<text x="75" y="125" class="title">1 · Original-button emulation</text>
+<rect x="75" y="150" width="330" height="165" rx="16" class="xiao"/>
+<text x="120" y="188" class="txt">XIAO ESP32C6</text>
+<text x="110" y="235" class="txt">D6 / GPIO16</text><text x="110" y="290" class="txt">D5 / GPIO23</text>
+<rect x="1195" y="150" width="330" height="165" rx="16" class="fan"/>
+<text x="1250" y="188" class="txt">Original fan PCB</text>
+<text x="1230" y="235" class="txt">Power button signal</text><text x="1230" y="290" class="txt">Speed button signal</text>
+<path d="M405 228 H1195" class="sig"/><path d="M405 283 H1195" class="sig"/>
+<text x="630" y="214" class="small">each: 50 ms active-low, open-drain; GPIO released afterward</text>
+<path d="M405 315 H1195" class="gnd"/><text x="740" y="337" class="small">verified common ground</text>
+
+<!-- Analog dividers panel -->
+<rect x="45" y="375" width="1510" height="385" rx="20" class="panel"/>
+<text x="75" y="417" class="title">2 · Analog feedback and battery measurement</text>
+<rect x="75" y="450" width="330" height="250" rx="16" class="xiao"/>
+<text x="120" y="490" class="txt">XIAO ADC</text>
+<text x="110" y="545" class="txt">D1 / GPIO1</text><text x="110" y="625" class="txt">D0 / GPIO0</text><text x="110" y="685" class="txt">GND</text>
+<rect x="1195" y="450" width="330" height="250" rx="16" class="fan"/>
+<text x="1240" y="490" class="txt">Original fan rails</text>
+<text x="1230" y="545" class="txt">Motor+</text><text x="1230" y="625" class="txt">BAT+</text><text x="1230" y="685" class="txt">Motor− / BAT−</text>
+<!-- Motor divider -->
+<path d="M1195 538 H1050" class="sense"/><rect x="900" y="516" width="150" height="44" rx="8" class="r"/><text x="938" y="545" class="small">150 kΩ</text><path d="M900 538 H405" class="sense"/>
+<circle cx="760" cy="538" r="9" class="node"/><path d="M760 538 V680" class="sense"/><rect x="695" y="575" width="130" height="44" rx="8" class="r"/><text x="735" y="604" class="small">22 kΩ</text>
+<!-- Battery divider -->
+<path d="M1195 618 H1050" class="pwr"/><rect x="900" y="596" width="150" height="44" rx="8" class="r"/><text x="935" y="625" class="small">220 kΩ</text><path d="M900 618 H405" class="pwr"/>
+<circle cx="650" cy="618" r="9" class="node"/><path d="M650 618 V680" class="sense"/><rect x="585" y="642" width="130" height="44" rx="8" class="r"/><text x="620" y="671" class="small">220 kΩ</text>
+<!-- Common ground -->
+<path d="M405 680 H1195" class="gnd"/><circle cx="650" cy="680" r="7" fill="#a9b6bd"/><circle cx="760" cy="680" r="7" fill="#a9b6bd"/>
+<text x="470" y="724" class="small">Motor factor ≈ 7.818 · Battery factor = 2.0 · never connect Motor+ directly to an ADC</text>
+
+<!-- BMP panel -->
+<rect x="45" y="785" width="1510" height="270" rx="20" class="panel"/>
+<text x="75" y="827" class="title">3 · BMP280 in SPI mode</text>
+<rect x="75" y="850" width="420" height="185" rx="16" class="xiao"/>
+<text x="120" y="885" class="txt">XIAO ESP32C6</text>
+<text x="330" y="912" class="small">D7 / GPIO17</text><text x="330" y="935" class="small">D8 / GPIO19</text><text x="330" y="958" class="small">D9 / GPIO20</text><text x="330" y="981" class="small">D10 / GPIO18</text><text x="400" y="1004" class="small">GND</text><text x="400" y="1027" class="small">3V3</text>
+<rect x="1105" y="850" width="420" height="185" rx="16" class="sens"/>
+<text x="1240" y="885" class="txt">BMP280</text>
+<text x="1130" y="912" class="small">SDO / MISO</text><text x="1130" y="935" class="small">CSB</text><text x="1130" y="958" class="small">SCL / SCK</text><text x="1130" y="981" class="small">SDA / MOSI</text><text x="1130" y="1004" class="small">GND</text><text x="1130" y="1027" class="small">VCC (3.3 V)</text>
+<path d="M495 907 H1105" class="sig"/><path d="M495 930 H1105" class="sig"/><path d="M495 953 H1105" class="sig"/><path d="M495 976 H1105" class="sig"/>
+<path d="M495 999 H1105" class="gnd"/><path d="M495 1022 H1105" class="pwr"/>
+<text x="670" y="902" class="small">MISO</text><text x="745" y="925" class="small">CS</text><text x="805" y="948" class="small">SCK</text><text x="870" y="971" class="small">MOSI</text><text x="720" y="994" class="small">ground</text><text x="785" y="1017" class="small">3.3 V</text>
+
+<text x="70" y="1092" class="small">Verify button-pad voltage, common ground, maximum rail voltage and divider values on every fan revision before connecting the XIAO.</text>
+</svg>

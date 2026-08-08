@@ -1,0 +1,18 @@
+name: ESPHome validation
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  validate-and-compile:
+    runs-on: ubuntu-latest
+    container: ghcr.io/esphome/esphome:2026.6.5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare non-secret CI configuration
+        run: cp esphome/secrets.example.yaml esphome/secrets.yaml
+      - name: Validate
+        run: esphome config esphome/ventilator-controller.yaml
+      - name: Compile
+        run: esphome compile esphome/ventilator-controller.yaml

@@ -1,0 +1,559 @@
+esphome:
+  name: xiao-esp32c6-smart-fan
+  friendly_name: XIAO Smart Fan
+  comment: Three-speed battery fan retrofit with physical feedback
+  project:
+    name: smicbee.xiao_esp32c6_smart_fan
+    version: "1.5.5"
+  # On every boot (including a timer wake-up), measure before Wi-Fi starts.
+  # A still-empty battery immediately returns to deep sleep; charging above
+  # the recovery threshold allows a normal boot.
+  on_boot:
+    - priority: 500
+      then:
+        - component.update: battery_voltage
+        - if:
+            condition:
+              lambda: return id(battery_voltage_fast) < 3.35f;
+            then:
+              - script.execute: enter_low_battery_sleep
+
+esp32:
+  board: seeed_xiao_esp32c6
+  variant: esp32c6
+  framework:
+    type: esp-idf
+
+logger:
+
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  power_save_mode: none
+  reboot_timeout: 10min
+
+deep_sleep:
+  id: low_battery_deep_sleep
+  sleep_duration: 60s
+
+mdns:
+
+spi:
+  clk_pin: GPIO20   # D9 / BMP280 SCL
+  mosi_pin: GPIO18  # D10 / BMP280 SDA
+  miso_pin: GPIO17  # D7 / BMP280 SDO
+
+output:
+  - platform: gpio
+    id: fan_power_pulse
+    pin:
+      number: GPIO16  # D6
+      inverted: true
+      mode:
+        output: true
+        open_drain: true
+
+  - platform: gpio
+    id: fan_speed_pulse
+    pin:
+      number: GPIO23  # D5
+      inverted: true
+      mode:
+        output: true
+        open_drain: true
+
+globals:
+  - id: fan_physical_on
+    type: bool
+    restore_value: true
+    initial_value: "false"
+
+  - id: battery_voltage_fast
+    type: float
+    restore_value: false
+    initial_value: "NAN"
+
+  - id: low_voltage_samples
+    type: uint8_t
+    restore_value: false
+    initial_value: "0"
+
+
+  - id: hardware_sync_active
+    type: bool
+    restore_value: false
+    initial_value: "false"
+
+  - id: hardware_fan_stage_value
+    type: uint8_t
+    restore_value: false
+    initial_value: "255"
+
+  - id: hardware_stage_candidate
+    type: uint8_t
+    restore_value: false
+    initial_value: "255"
+
+  - id: hardware_stage_candidate_samples
+    type: uint8_t
+    restore_value: false
+    initial_value: "0"
+
+  # Immediate command-side estimate. Unlike the filtered hardware value this
+  # advances after every completed button pulse, allowing rapid commands to be
+  # serialized without waiting several seconds for ADC confirmation.
+  - id: control_stage_estimate
+    type: uint8_t
+    restore_value: false
+    initial_value: "255"
+
+  - id: control_feedback_hold_until
+    type: uint32_t
+    restore_value: false
+    initial_value: "0"
+
+  - id: motor_voltage_fast
+    type: float
+    restore_value: false
+    initial_value: "NAN"
+
+  - id: requested_fan_on
+    type: bool
+    restore_value: false
+    initial_value: "false"
+
+  - id: requested_fan_stage
+    type: uint8_t
+    restore_value: false
+    initial_value: "1"
+
+  - id: request_generation
+    type: uint32_t
+    restore_value: false
+    initial_value: "0"
+
+  - id: processing_generation
+    type: uint32_t
+    restore_value: false
+    initial_value: "0"
+
+  - id: handled_generation
+    type: uint32_t
+    restore_value: false
+    initial_value: "0"
+
+script:
+  - id: sync_fan_from_hardware
+    mode: restart
+    then:
+      # Publish measured hardware state without letting the fan on_state
+      # automation drive either physical toggle input.
+      - globals.set:
+          id: hardware_sync_active
+          value: "true"
+      - lambda: |-
+          const uint8_t stage = id(hardware_fan_stage_value);
+          id(fan_physical_on) = stage > 0;
+          id(control_stage_estimate) = stage;
+          auto call = id(ventilator).make_call();
+          call.set_state(stage > 0);
+          if (stage > 0) call.set_speed(stage);
+          call.perform();
+      - delay: 500ms
+      - globals.set:
+          id: hardware_sync_active
+          value: "false"
+
+  - id: enter_low_battery_sleep
+    mode: single
+    then:
+      # The original fan controller has stopped the motor around this region.
+      # Reconcile software state without driving either toggle-button GPIO.
+      - script.stop: apply_fan_state
+      - globals.set:
+          id: hardware_sync_active
+          value: "true"
+      - globals.set:
+          id: fan_physical_on
+          value: "false"
+      - fan.turn_off: ventilator
+      - delay: 500ms
+      - deep_sleep.enter: low_battery_deep_sleep
+
+  - id: apply_fan_state
+    mode: single
+    then:
+      - lambda: |-
+          id(processing_generation) = id(request_generation);
+      # Make a fresh, independent ADC measurement for this controller pass.
+      - component.update: motor_voltage
+      - delay: 50ms
+      - lambda: |-
+          const float x = id(motor_voltage_fast);
+          if (isnan(x)) {
+            id(control_stage_estimate) = 255;
+          } else if (x < 4.804f) {
+            id(control_stage_estimate) = 0;
+          } else if (x < 5.727f) {
+            id(control_stage_estimate) = 1;
+          } else if (x < 7.213f) {
+            id(control_stage_estimate) = 2;
+          } else {
+            id(control_stage_estimate) = 3;
+          }
+      - if:
+          condition:
+            lambda: return !id(hardware_sync_active);
+          then:
+            - if:
+                condition:
+                  lambda: return id(control_stage_estimate) <= 3;
+                then:
+                  - if:
+                      condition:
+                        lambda: return id(requested_fan_on);
+                      then:
+                        # A stopped fan always starts in stage 1. Only this
+                        # transition uses Power; later changes use Speed only.
+                        - if:
+                            condition:
+                              lambda: return id(control_stage_estimate) == 0;
+                            then:
+                              - output.turn_on: fan_power_pulse
+                              - delay: 50ms
+                              - output.turn_off: fan_power_pulse
+                              - globals.set:
+                                  id: fan_physical_on
+                                  value: "true"
+                              - lambda: |-
+                                  id(control_stage_estimate) = 1;
+                                  id(control_feedback_hold_until) = millis() + 7000U;
+                              - delay: 700ms
+                        # Speed advances cyclically 1 -> 2 -> 3 -> 1. Compute
+                        # the shortest forward sequence from the known stage.
+                        - repeat:
+                            count: !lambda |-
+                              const uint8_t current = id(control_stage_estimate);
+                              const uint8_t target = id(requested_fan_stage);
+                              if (target < 1 || target > 3) return 0;
+                              if (current == 0) return target - 1;
+                              return (target + 3 - current) % 3;
+                            then:
+                              - output.turn_on: fan_speed_pulse
+                              - delay: 50ms
+                              - output.turn_off: fan_speed_pulse
+                              - lambda: |-
+                                  id(control_stage_estimate) =
+                                    (id(control_stage_estimate) % 3) + 1;
+                                  id(control_feedback_hold_until) = millis() + 7000U;
+                              - delay: 500ms
+                      else:
+                        # Switching off needs one Power pulse only when the
+                        # measured hardware state says the motor is running.
+                        - if:
+                            condition:
+                              lambda: return id(control_stage_estimate) > 0;
+                            then:
+                              - output.turn_on: fan_power_pulse
+                              - delay: 50ms
+                              - output.turn_off: fan_power_pulse
+                              - globals.set:
+                                  id: fan_physical_on
+                                  value: "false"
+                              - lambda: |-
+                                  id(control_stage_estimate) = 0;
+                                  id(control_feedback_hold_until) = millis() + 7000U;
+                else:
+                  - lambda: |-
+                      ESP_LOGW("fan", "Hardware stage unknown; refusing blind button pulse");
+      - if:
+          condition:
+            lambda: return id(control_stage_estimate) <= 3;
+          then:
+            - lambda: |-
+                // Mark only the generation captured at the beginning. A newer
+                // request that arrived during this pass remains pending.
+                id(handled_generation) = id(processing_generation);
+
+fan:
+  - platform: template
+    name: "Ventilator"
+    id: ventilator
+    icon: mdi:fan
+    speed_count: 3
+    restore_mode: RESTORE_DEFAULT_OFF
+    on_state:
+      - if:
+          condition:
+            lambda: return !id(hardware_sync_active);
+          then:
+            - lambda: |-
+                // Capture user intent independently from later hardware-state
+                // publication. Feedback must not rewrite a queued command.
+                id(requested_fan_on) = id(ventilator).state;
+                const uint8_t speed = id(ventilator).speed;
+                id(requested_fan_stage) =
+                  speed >= 1 && speed <= 3 ? speed : 1;
+                id(control_feedback_hold_until) = millis() + 10000U;
+                id(request_generation)++;
+    on_speed_set:
+      - if:
+          condition:
+            lambda: return !id(hardware_sync_active);
+          then:
+            - lambda: |-
+                // Some HA frontends update only the fan speed while the on/off
+                // state is unchanged. Capture that as a full new user request.
+                id(requested_fan_on) = id(ventilator).state;
+                const uint8_t speed = id(ventilator).speed;
+                id(requested_fan_stage) =
+                  speed >= 1 && speed <= 3 ? speed : 1;
+                id(control_feedback_hold_until) = millis() + 10000U;
+                id(request_generation)++;
+
+interval:
+  - interval: 250ms
+    then:
+      - if:
+          condition:
+            lambda: |-
+              return !id(hardware_sync_active) &&
+                     !id(apply_fan_state).is_running() &&
+                     id(request_generation) != id(handled_generation);
+          then:
+            - script.execute: apply_fan_state
+
+button:
+  - platform: restart
+    name: "Controller Neustart"
+    entity_category: diagnostic
+
+  - platform: safe_mode
+    name: "Controller Sicherer Modus"
+    entity_category: diagnostic
+
+binary_sensor:
+  - platform: template
+    name: "Ventilator Hardwarestatus"
+    id: hardware_fan_running
+    icon: mdi:fan
+
+sensor:
+  # Motor feedback: Motor red -- 150k -- D1/GPIO1 -- 22k -- GND.
+  # The divider factor is (150k + 22k) / 22k = 7.81818.
+  - platform: adc
+    pin: GPIO1  # D1 / A1
+    name: "Motorspannung"
+    id: motor_voltage
+    icon: mdi:flash
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 2
+    attenuation: 12db
+    samples: 16
+    sampling_mode: avg
+    update_interval: 1s
+    filters:
+      - multiply: 7.8181818
+      - median:
+          window_size: 5
+          send_every: 1
+          send_first_at: 1
+    on_raw_value:
+      - lambda: |-
+          // Raw here means before YAML filters, but after the ADC component's
+          // configured 16-sample average. Reconstruct the motor voltage for
+          // immediate command decisions without waiting for the median window.
+          id(motor_voltage_fast) = x * 7.8181818f;
+    on_value:
+      - lambda: |-
+          // Calibrated with USB charging active:
+          // off 4.636..4.667 V, stages 4.941/6.513/7.912 V.
+          // Schmitt thresholds keep the last stable class in the narrow gaps.
+          uint8_t stage;
+          const uint8_t previous = id(hardware_fan_stage_value);
+          if (previous == 0) {
+            if (x < 4.84f) stage = 0;
+            else if (x < 5.85f) stage = 1;
+            else if (x < 7.35f) stage = 2;
+            else stage = 3;
+          } else if (previous == 1) {
+            if (x < 4.77f) stage = 0;
+            else if (x < 5.85f) stage = 1;
+            else if (x < 7.35f) stage = 2;
+            else stage = 3;
+          } else if (previous == 2) {
+            if (x < 4.77f) stage = 0;
+            else if (x < 5.61f) stage = 1;
+            else if (x < 7.35f) stage = 2;
+            else stage = 3;
+          } else if (previous == 3) {
+            if (x < 4.77f) stage = 0;
+            else if (x < 5.61f) stage = 1;
+            else if (x < 7.08f) stage = 2;
+            else stage = 3;
+          } else {
+            // Initial classification uses the measured cluster midpoints.
+            if (x < 4.804f) stage = 0;
+            else if (x < 5.727f) stage = 1;
+            else if (x < 7.213f) stage = 2;
+            else stage = 3;
+          }
+
+          if (stage != id(hardware_stage_candidate)) {
+            id(hardware_stage_candidate) = stage;
+            id(hardware_stage_candidate_samples) = 1;
+            return;
+          }
+          if (id(hardware_stage_candidate_samples) < 5)
+            id(hardware_stage_candidate_samples)++;
+          if (id(hardware_stage_candidate_samples) < 5)
+            return;
+
+          id(hardware_fan_stage).publish_state(stage);
+          id(hardware_fan_running).publish_state(stage > 0);
+
+          // Never interfere with a command sequence and never call either
+          // physical button script from measured feedback.
+          if (id(apply_fan_state).is_running() || id(hardware_sync_active))
+            return;
+          if ((int32_t) (millis() - id(control_feedback_hold_until)) < 0)
+            return;
+          id(control_stage_estimate) = stage;
+          if (stage == id(hardware_fan_stage_value))
+            return;
+          id(hardware_fan_stage_value) = stage;
+          id(sync_fan_from_hardware).execute();
+
+
+
+  - platform: template
+    name: "Ventilator Hardwarestufe"
+    id: hardware_fan_stage
+    icon: mdi:fan-speed-1
+    accuracy_decimals: 0
+    update_interval: never
+
+  # External 1:2 divider: BAT+ -- 220k -- A0/GPIO0 -- 220k -- GND.
+  # The ADC sees half the battery voltage; multiply by two restores volts.
+  - platform: adc
+    pin: GPIO0  # D0 / A0
+    name: "Akkuspannung"
+    id: battery_voltage
+    icon: mdi:battery
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: "V"
+    accuracy_decimals: 2
+    attenuation: 12db
+    samples: 16
+    sampling_mode: avg
+    update_interval: 5s
+    filters:
+      - multiply: 2.0
+      - sliding_window_moving_average:
+          window_size: 6
+          send_every: 3
+          send_first_at: 3
+    on_value:
+      - component.update: battery_level_estimated
+    on_raw_value:
+      - lambda: |-
+          const float voltage = x * 2.0f;
+          id(battery_voltage_fast) = voltage;
+          if (voltage < 3.05f) {
+            if (id(low_voltage_samples) < 3) id(low_voltage_samples)++;
+          } else if (voltage > 3.10f) {
+            id(low_voltage_samples) = 0;
+          }
+      - if:
+          condition:
+            lambda: return id(low_voltage_samples) >= 3;
+          then:
+            - script.execute: enter_low_battery_sleep
+
+  # Voltage-based estimate for a single 4.2 V Li-ion/LiPo cell. The fan motor
+  # causes voltage sag, so this is intentionally labelled as an estimate.
+  - platform: template
+    name: "Akkustand geschätzt"
+    id: battery_level_estimated
+    icon: mdi:battery
+    device_class: battery
+    state_class: measurement
+    unit_of_measurement: "%"
+    accuracy_decimals: 0
+    update_interval: never
+    lambda: |-
+      const float voltage = id(battery_voltage).state;
+      if (isnan(voltage)) return NAN;
+
+      // Ascending 1S Li-ion approximation; the lower endpoint was calibrated
+      // from the measured stage-3 shutdown/brownout voltage.
+      static const float volts[] = {
+        2.95f, 3.60f, 3.70f, 3.75f, 3.80f, 3.85f,
+        3.90f, 3.95f, 4.00f, 4.05f, 4.10f, 4.15f, 4.20f
+      };
+      static const float levels[] = {
+        0.0f, 5.0f, 15.0f, 25.0f, 40.0f, 55.0f,
+        65.0f, 75.0f, 80.0f, 85.0f, 90.0f, 95.0f, 100.0f
+      };
+
+      if (voltage <= volts[0]) return 0.0f;
+      const int points = sizeof(volts) / sizeof(volts[0]);
+      if (voltage >= volts[points - 1]) return 100.0f;
+      for (int i = 1; i < points; i++) {
+        if (voltage <= volts[i]) {
+          const float ratio = (voltage - volts[i - 1]) /
+                              (volts[i] - volts[i - 1]);
+          return levels[i - 1] + ratio * (levels[i] - levels[i - 1]);
+        }
+      }
+      return 100.0f;
+
+  - platform: bmp280_spi
+    temperature:
+      name: "Temperatur"
+      id: bmp280_temperature
+      oversampling: 16x
+      accuracy_decimals: 1
+    pressure:
+      name: "Luftdruck"
+      id: bmp280_pressure
+      accuracy_decimals: 1
+    cs_pin: GPIO19  # D8 / BMP280 CSB
+    update_interval: 15s
+
+  - platform: wifi_signal
+    name: "WLAN Signal"
+    update_interval: 60s
+    entity_category: diagnostic
+
+  - platform: uptime
+    name: "Laufzeit"
+    update_interval: 60s
+    entity_category: diagnostic
+
+text_sensor:
+  - platform: wifi_info
+    ip_address:
+      name: "IP-Adresse"
+      entity_category: diagnostic
+    ssid:
+      name: "WLAN"
+      entity_category: diagnostic
+    mac_address:
+      name: "WLAN MAC"
+      entity_category: diagnostic
+
+  - platform: version
+    name: "ESPHome Version"
+    entity_category: diagnostic
