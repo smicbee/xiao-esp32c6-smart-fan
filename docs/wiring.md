@@ -4,7 +4,7 @@
 
 ![Electrical schematic](diagrams/circuit-schematic.svg)
 
-The SVG is reproducibly generated from [`generate_circuit_schematic.py`](diagrams/generate_circuit_schematic.py) with the pinned dependency in [`requirements-diagrams.txt`](../requirements-diagrams.txt).
+Editable KiCad 9 source: [`hardware/xiao-esp32c6-smart-fan.kicad_sch`](../hardware/xiao-esp32c6-smart-fan.kicad_sch). A directly generated [`PDF export`](diagrams/circuit-schematic.pdf) is provided as an alternative. The embedded SVG and PDF are exported with `kicad-cli`; they are not hand-edited.
 
 This schematic separates the original fan electronics from the retrofit. The XIAO emulates the existing buttons and measures the motor and battery rails through voltage dividers; it does **not** drive the motor directly. The documented prototype powers/programs the XIAO through USB and has no fan-battery power feed into XIAO 3V3 or 5V.
 

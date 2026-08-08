@@ -57,7 +57,7 @@ See [hardware/BOM.csv](hardware/BOM.csv) and [docs/wiring.md](docs/wiring.md).
 
 ![XIAO ESP32C6 smart fan electrical schematic](docs/diagrams/circuit-schematic.svg)
 
-The schematic shows the verified prototype topology: the XIAO only emulates the original Power/Speed buttons and measures divided-down voltages. It does not drive the motor directly and is not powered from the fan battery in the documented USB-powered prototype.
+The [editable KiCad 9 source](hardware/xiao-esp32c6-smart-fan.kicad_sch) shows the verified prototype topology: the XIAO only emulates the original Power/Speed buttons and measures divided-down voltages. It does not drive the motor directly and is not powered from the fan battery in the documented USB-powered prototype.
 
 ## Pin map
 

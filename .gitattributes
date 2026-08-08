@@ -1,0 +1,2 @@
+# KiCad's SVG exporter intentionally emits trailing spaces and a timestamped title.
+*.svg -whitespace
